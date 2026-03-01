@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing Lab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle, #fffdf0 0%, #fff9db 100%);
+            --accent-color: #fab005; 
+            --task2-color: #339af0; 
+            --other-color: #adb5bd; 
+            --text-color: #5c5c5c;
+            --important-bg: #fff0f6;
+            --important-border: #ff85c0;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-gradient); color: var(--text-color); margin: 0; padding: 10px 20px; min-height: 100vh; position: relative; padding-bottom: 50px; }
+        
+        .watermark { 
+            position: fixed; bottom: 15px; left: 20px; font-size: 16px; 
+            color: rgba(0,0,0,0.15); font-family: 'Dancing Script', 'Brush Script MT', cursive; 
+            pointer-events: none; z-index: 999; 
+        }
+
+        #dashboard { max-width: 1100px; margin: 0 auto; position: relative; }
+        .streak-container { position: absolute; top: 0; right: 0; display: flex; gap: 8px; z-index: 10; }
+        .streak-card { background: white; padding: 4px 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 12px; font-weight: bold; border: 1px solid var(--accent-color); }
+        .lab-header { text-align: center; margin-bottom: 15px; color: var(--accent-color); font-weight: 800; font-size: 1.6rem; }
+        
+        .controls-row { display: flex; justify-content: center; gap: 10px; max-width: 900px; margin: 20px auto; flex-wrap: wrap; }
+        #searchInput { flex: 2; min-width: 200px; padding: 10px 18px; border-radius: 20px; border: 2px solid #fff; outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); font-size: 14px; }
+        .filter-select { flex: 1; padding: 8px; border-radius: 15px; border: 2px solid #fff; outline: none; background: white; cursor: pointer; font-size: 13px; }
+
+        .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; }
+        .folder-card { background: white; padding: 15px 18px; border-radius: 15px; box-shadow: 0 6px 15px rgba(0,0,0,0.04); cursor: pointer; position: relative; border-top: 5px solid var(--accent-color); transition: transform 0.2s; overflow: hidden; }
+        .folder-card:hover { transform: translateY(-3px); }
+        
+        .folder-card.task-2 { border-top-color: var(--task2-color); }
+        .folder-card.task-other { border-top-color: var(--other-color); }
+        
+        .folder-title { font-weight: bold; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; color: #444; }
+        .folder-meta { font-size: 10.5px; color: #999; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; white-space: nowrap; }
+        .tag-type { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 9px; font-weight: 800; margin: 4px 0; text-transform: uppercase; }
+
+        #lab-interface { display: none; flex-direction: column; align-items: center; }
+        .header-box { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px; margin-bottom: 15px; background: rgba(255,255,255,0.7); padding: 12px 20px; border-radius: 15px; backdrop-filter: blur(10px); box-sizing: border-box; }
+        .topic-input { font-size: 16px; border: none; border-bottom: 2px solid var(--accent-color); outline: none; width: 40%; background: transparent; font-weight: bold; }
+
+        .content-section { width: 100%; max-width: 1100px; margin-bottom: 15px; box-sizing: border-box; }
+        
+        .q-img-block { 
+            background: #fff; padding: 15px 20px; border-radius: 18px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 20px; 
+            display: flex; gap: 0; box-sizing: border-box; 
+            min-height: 100px; align-items: flex-start;
+        }
+        .q-side { flex: 1.2; min-width: 100px; }
+        .img-side { flex: 0.8; min-width: 100px; display: flex; flex-direction: column; position: relative; }
+        
+        .resizer {
+            width: 10px; cursor: col-resize; background: transparent;
+            margin: 0 10px; align-self: stretch; display: flex; align-items: center; justify-content: center;
+        }
+        .resizer::after { content: '┆'; color: #ddd; font-weight: bold; font-size: 20px; }
+        .resizer:hover::after { color: var(--accent-color); }
+
+        .essay-block { background: #fff; padding: 20px; border-radius: 18px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 15px; position: relative; border-left: 5px solid var(--accent-color); counter-increment: draft-idx; box-sizing: border-box; transition: background 0.3s; }
+        .essay-block.important { background: var(--important-bg); border-left-color: var(--important-border); }
+        .draft-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+        .draft-title::before { content: "DRAFT " counter(draft-idx); font-weight: 800; color: var(--accent-color); font-size: 12px; }
+
+        .editor-box { 
+            width: 100%; min-height: 1.6em; padding: 8px 12px; 
+            border: 1.5px solid #f8f8f8; border-radius: 10px; outline: none; 
+            line-height: 1.6; font-size: 15px; background: #fafafa; 
+            word-break: break-word; box-sizing: border-box; 
+        }
+        .editor-box:focus { border-color: var(--accent-color); background: #fff; }
+
+        .image-drop-zone { border: 2px dashed #eee; min-height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ccc; font-size: 12px; transition: 0.3s; background: #fafafa; border-radius: 10px; }
+        .image-drop-zone:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+        .writing-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 30px; box-sizing: border-box; }
+
+        .img-wrap { position: relative; width: 100%; margin-top: 5px; }
+        .img-preview { width: 100%; border-radius: 8px; display: none; object-fit: contain; }
+        .remove-img-btn { 
+            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); 
+            color: white; border: none; border-radius: 5px; padding: 2px 8px; 
+            font-size: 10px; cursor: pointer; display: none; 
+        }
+        .remove-img-btn:hover { background: #e74c3c; }
+        
+        .fab { position: fixed; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .add-btn-main { bottom: 25px; right: 25px; width: 45px; height: 45px; background: var(--accent-color); font-size: 22px; }
+        .back-btn { bottom: 25px; right: 25px; width: 45px; height: 45px; background: #4a4a4a; font-size: 18px; }
+        .help-btn { bottom: 80px; right: 25px; width: 45px; height: 45px; background: #9bb1ff; font-size: 18px; }
+
+        .mini-btn { background: #f1f1f1; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; color: #999; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .mini-btn.star-btn { color: #ccc; font-size: 12px; }
+        .mini-btn.star-btn.active { color: #ff85c0; }
+        .shortcuts-panel { position: fixed; bottom: 135px; right: 25px; background: white; padding: 12px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: none; z-index: 100; font-size: 12px; }
+
+        /* Sync styles */
+        .sync-status { position: fixed; bottom: 25px; left: 20px; font-size: 11px; color: #aaa; background: white; padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); z-index: 200; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .sync-status:hover { background: #f9f9f9; }
+        .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+        .sync-dot.synced { background: #51cf66; }
+        .sync-dot.syncing { background: #fab005; animation: pulse 1s infinite; }
+        .sync-dot.error { background: #ff6b6b; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-box { background: white; border-radius: 20px; padding: 28px 32px; width: 420px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-box h3 { margin: 0 0 6px; font-size: 18px; color: #444; }
+        .modal-box p { font-size: 12px; color: #aaa; margin: 0 0 18px; }
+        .modal-input { width: 100%; padding: 10px 14px; border: 2px solid #f0f0f0; border-radius: 10px; font-size: 13px; outline: none; margin-bottom: 10px; box-sizing: border-box; font-family: monospace; }
+        .modal-input:focus { border-color: var(--accent-color); }
+        .modal-btn { width: 100%; padding: 11px; border: none; border-radius: 12px; background: var(--accent-color); color: white; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 4px; }
+        .modal-btn:hover { opacity: 0.9; }
+        .modal-hint { font-size: 11px; color: #bbb; margin-top: 12px; line-height: 1.6; }
+        .modal-hint a { color: var(--accent-color); }
+        .modal-skip { display: block; text-align: center; font-size: 12px; color: #ccc; margin-top: 10px; cursor: pointer; }
+        .modal-skip:hover { color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <!-- Sync Setup Modal -->
+    <div class="modal-overlay" id="syncModal" style="display:none;">
+        <div class="modal-box">
+            <h3>☁️ Sync Setup</h3>
+            <p>Kết nối GitHub Gist để đồng bộ dữ liệu giữa các thiết bị</p>
+            <input class="modal-input" id="modalToken" type="password" placeholder="GitHub Personal Access Token" autocomplete="off">
+            <input class="modal-input" id="modalGistId" type="text" placeholder="Gist ID (để trống nếu muốn tạo mới)" autocomplete="off">
+            <button class="modal-btn" onclick="saveSyncConfig()">💾 Lưu & Kết nối</button>
+            <p class="modal-hint">
+                📌 Tạo token tại <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens</a><br>
+                → Chọn scope: <b>gist</b> → Generate → Copy token<br>
+                📌 Gist ID: lấy từ URL gist của bạn (<code>gist.github.com/user/<b>ID_Ở_ĐÂY</b></code>)
+            </p>
+            <span class="modal-skip" onclick="closeSyncModal()">Bỏ qua, dùng offline</span>
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="sync-status" id="syncStatus" onclick="openSyncModal()" title="Click để cấu hình sync">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Offline</span>
+    </div>
+
+    <div class="watermark">cloudofdecember</div>
+
+    <div id="dashboard">
+        <div class="streak-container">
+            <div class="streak-card">🔥 <span id="currentStreak">0</span></div>
+            <div class="streak-card">🏆 <span id="bestStreak">0</span></div>
+        </div>
+        <div class="lab-header">📝 Writing Lab</div>
+        <div class="controls-row">
+            <input type="text" id="searchInput" placeholder="Search Title..." oninput="updateDashboard()">
+            <select id="filterPart" class="filter-select" onchange="updateFilterTypes(); updateDashboard();">
+                <option value="All">All Tasks</option>
+                <option value="Task 1">Task 1</option>
+                <option value="Task 2">Task 2</option>
+                <option value="Other">Other</option>
+            </select>
+            <select id="filterType" class="filter-select" onchange="updateDashboard()">
+                <option value="All">All Types</option>
+            </select>
+        </div>
+        <div class="folder-grid" id="folderGrid"></div>
+        <button class="fab add-btn-main" onclick="createNewFolder()">+</button>
+    </div>
+
+    <div id="lab-interface">
+        <button class="fab help-btn" onclick="toggleHelp()">?</button>
+        <button class="fab back-btn" onclick="goHome()">🏠</button>
+        
+        <div id="shortcuts" class="shortcuts-panel">
+            <div style="display:flex; flex-direction:column; gap:6px; font-weight:bold;">
+                <div><span style="color:var(--accent-color)">Z</span>: Yellow | <span style="color:var(--task2-color)">A</span>: Blue</div>
+                <div><span style="color:pink">Q</span>: Pink | <span style="color:red">D</span>: Red Text</div>
+            </div>
+        </div>
+
+        <div class="header-box">
+            <div style="flex:1; display:flex; align-items:center; gap:8px">
+                <select id="folderPart" onchange="updateSubTypes(); saveCurrentFolder();" style="padding: 5px; border-radius: 6px; border: 1.5px solid var(--accent-color); font-size:13px;">
+                    <option value="Task 1">Task 1</option>
+                    <option value="Task 2">Task 2</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="folderSubType" onchange="saveCurrentFolder()" style="padding: 5px; border-radius: 6px; border: 1.5px solid #ddd; font-size:13px;"></select>
+                <input type="text" id="topicInput" class="topic-input" placeholder="Title..." oninput="saveCurrentFolder()">
+            </div>
+            <button onclick="addEssayBlock()" style="padding: 6px 15px; border-radius: 10px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold; font-size:13px;">+ Add Draft</button>
+        </div>
+
+        <div id="q-container" class="content-section"></div>
+        <div id="essay-container" class="content-section" style="counter-reset: draft-idx;"></div>
+    </div>
+
+    <script>
+        const subTypesMap = {
+            "Task 1": ["Line Graph", "Bar Chart", "Pie Chart", "Table", "Map", "Process", "Mixed"],
+            "Task 2": ["Agree/Disagree", "Discussion", "Adv/Disadv", "Problem/Solution", "Two-part Question"],
+            "Other": ["Other"]
+        };
+
+        const STORAGE_KEY = 'WritingLab_Stable_Data';
+        const STREAK_KEY = 'WritingLab_Streak_Data';
+
+        let folders = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        let streakData = JSON.parse(localStorage.getItem(STREAK_KEY)) || { current: 0, best: 0, lastDate: null };
+        let currentId = null;
+
+        let undoStack = [];
+        let isUndoing = false;
+
+        function saveToUndoStack() {
+            if (isUndoing) return;
+            const currentState = JSON.stringify(folders);
+            if (undoStack.length === 0 || undoStack[undoStack.length - 1] !== currentState) {
+                undoStack.push(currentState);
+                if (undoStack.length > 40) undoStack.shift();
+            }
+        }
+
+        function performUndo() {
+            if (undoStack.length > 1) {
+                isUndoing = true;
+                undoStack.pop(); 
+                folders = JSON.parse(undoStack[undoStack.length - 1]);
+                saveToLocal();
+                if (currentId) openFolder(currentId);
+                else updateDashboard();
+                setTimeout(() => { isUndoing = false; }, 50);
+            }
+        }
+
+        function initResizer() {
+            const resizer = document.querySelector('.resizer');
+            const leftSide = document.querySelector('.q-side');
+            const rightSide = document.querySelector('.img-side');
+            if(!resizer) return;
+
+            resizer.onmousedown = (e) => {
+                e.preventDefault();
+                document.onmousemove = (e) => {
+                    const container = document.querySelector('.q-img-block');
+                    const rect = container.getBoundingClientRect();
+                    const percentage = ((e.clientX - rect.left) / rect.width) * 100;
+                    if (percentage > 15 && percentage < 85) {
+                        leftSide.style.flex = percentage / 100;
+                        rightSide.style.flex = (100 - percentage) / 100;
+                    }
+                };
+                document.onmouseup = () => { document.onmousemove = null; };
+            };
+        }
+
+        function getTagStyle(subType) {
+            const colors = {
+                "Line Graph": { bg: "#fff9db", text: "#f08c00" }, "Bar Chart": { bg: "#fff3bf", text: "#e67e22" },
+                "Pie Chart": { bg: "#ffe8cc", text: "#d35400" }, "Table": { bg: "#fff4e6", text: "#fd7e14" },
+                "Map": { bg: "#ebfbee", text: "#2f9e44" }, "Process": { bg: "#e6fcf5", text: "#0ca678" },
+                "Mixed": { bg: "#f3f0ff", text: "#845ef7" }, "Agree/Disagree": { bg: "#e7f5ff", text: "#1971c2" },
+                "Discussion": { bg: "#e1f5fe", text: "#0288d1" }, "Adv/Disadv": { bg: "#e3f2fd", text: "#1565c0" },
+                "Problem/Solution": { bg: "#edf2ff", text: "#4c6ef5" }, "Two-part Question": { bg: "#f8f0fc", text: "#ae3ec9" },
+                "Other": { bg: "#f1f3f5", text: "#495057" }
+            };
+            return colors[subType] || { bg: "#f1f3f5", text: "#495057" };
+        }
+
+        function autoExpand(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; saveCurrentFolder(); }
+
+        function updateDashboard() {
+            const grid = document.getElementById('folderGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const fPart = document.getElementById('filterPart').value;
+            const fType = document.getElementById('filterType').value;
+            grid.innerHTML = '';
+            folders.filter(f => {
+                const matchSearch = (f.topic || "").toLowerCase().includes(search);
+                const matchPart = fPart === "All" || f.type === fPart;
+                const matchType = fType === "All" || f.subType === fType;
+                return matchSearch && matchPart && matchType;
+            }).forEach(f => {
+                const card = document.createElement('div');
+                let colorClass = f.type === 'Task 2' ? 'task-2' : (f.type === 'Other' ? 'task-other' : 'task-1');
+                const style = getTagStyle(f.subType);
+                const count = f.essays.length;
+                card.className = `folder-card ${colorClass}`;
+                card.onclick = () => openFolder(f.id);
+                card.innerHTML = `<button class="delete-btn" onclick="deleteFolder(event, '${f.id}')" style="position:absolute; top:8px; right:8px; border:none; background:none; color:#ddd; font-size:18px; cursor:pointer;">×</button>
+                    <div class="folder-title">${f.topic || 'Untitled'}</div>
+                    <div class="tag-type" style="background:${style.bg}; color:${style.text}">${f.subType || 'General'}</div>
+                    <div class="folder-meta">${f.type} • ${f.date} • <b>${count} ${count > 1 ? 'drafts' : 'draft'}</b></div>`;
+                grid.appendChild(card);
+            });
+            document.getElementById('currentStreak').innerText = streakData.current;
+            document.getElementById('bestStreak').innerText = streakData.best;
+        }
+
+        function openFolder(id) {
+            currentId = id; const f = folders.find(x => x.id === id);
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('lab-interface').style.display = 'flex';
+            document.getElementById('topicInput').value = f.topic || '';
+            document.getElementById('folderPart').value = f.type || 'Task 1';
+            
+            const subSelect = document.getElementById('folderSubType');
+            subSelect.innerHTML = '';
+            subTypesMap[f.type || 'Task 1'].forEach(t => {
+                const opt = document.createElement('option'); opt.value = t; opt.innerText = t;
+                if(t === f.subType) opt.selected = true;
+                subSelect.appendChild(opt);
+            });
+            
+            document.getElementById('q-container').innerHTML = `
+                <div class="q-img-block">
+                    <div class="q-side">
+                        <span style="font-size:10px; font-weight:800; color:#bbb;">📝 QUESTION</span>
+                        <div class="editor-box" contenteditable="true" oninput="autoExpand(this)">${f.question || ''}</div>
+                    </div>
+                    <div class="resizer"></div>
+                    <div class="img-side">
+                        <span style="font-size:10px; font-weight:800; color:#bbb;">🖼️ IMAGE</span>
+                        <div class="image-drop-zone" onpaste="handleImagePaste(event)" style="display: ${f.img ? 'none' : 'flex'}">Paste Image Here</div>
+                        <div class="img-wrap" style="display: ${f.img ? 'block' : 'none'}">
+                            <button class="remove-img-btn" onclick="removeImage()" style="display:block">× Remove Image</button>
+                            <img src="${f.img || ''}" class="img-preview" style="display:block">
+                        </div>
+                    </div>
+                </div>`;
+            
+            const eContainer = document.getElementById('essay-container'); eContainer.innerHTML = '';
+            f.essays.forEach(ess => eContainer.appendChild(renderEssayBlock(ess)));
+            document.querySelectorAll('.editor-box').forEach(autoExpand);
+            initResizer();
+            if (!isUndoing) saveToUndoStack();
+        }
+
+        function removeImage() {
+            saveToUndoStack();
+            const f = folders.find(x => x.id === currentId);
+            f.img = '';
+            openFolder(currentId);
+            saveCurrentFolder();
+            saveToUndoStack();
+        }
+
+        function renderEssayBlock(data) {
+            const div = document.createElement('div'); 
+            div.className = `essay-block ${data.important ? 'important' : ''}`;
+            div.innerHTML = `<div style="position:absolute; top:10px; right:10px; display:flex; gap:5px;">
+                    <button class="mini-btn star-btn ${data.important ? 'active' : ''}" onclick="toggleImportant(this)">${data.important ? '★' : '☆'}</button>
+                    <button class="mini-btn" onclick="moveBlock(this, -1)">↑</button><button class="mini-btn" onclick="moveBlock(this, 1)">↓</button>
+                    <button class="mini-btn" onclick="if(confirm('Delete?')){this.closest('.essay-block').remove(); saveCurrentFolder();}">×</button>
+                </div>
+                <div class="draft-header"><span class="draft-title"></span><span style="font-size:10px; color:#ccc; margin-left:10px;">${data.d}</span></div>
+                <div class="writing-layout">
+                    <div><span style="font-size:10px; font-weight:800; color:#bbb;">💡 OUTLINE</span><div class="editor-box" contenteditable="true" oninput="autoExpand(this)">${data.i || ''}</div></div>
+                    <div><span style="font-size:10px; font-weight:800; color:#bbb;">🖋️ ESSAY</span><div class="editor-box" contenteditable="true" oninput="autoExpand(this)">${data.e || ''}</div></div>
+                </div>`;
+            return div;
+        }
+
+        function saveCurrentFolder() {
+            if(!currentId || isUndoing) return;
+            const f = folders.find(x => x.id === currentId);
+            if(f) {
+                f.topic = document.getElementById('topicInput').value;
+                f.type = document.getElementById('folderPart').value;
+                f.subType = document.getElementById('folderSubType').value;
+                f.question = document.querySelector('.q-side .editor-box').innerHTML;
+                f.essays = Array.from(document.querySelectorAll('.essay-block')).map(b => ({
+                    i: b.querySelectorAll('.editor-box')[0].innerHTML, 
+                    e: b.querySelectorAll('.editor-box')[1].innerHTML, 
+                    d: b.querySelector('.draft-header span:last-child').innerText,
+                    important: b.classList.contains('important')
+                }));
+            }
+            saveToLocal();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (e.ctrlKey && key === 'z') { e.preventDefault(); performUndo(); return; }
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0 && !sel.isCollapsed) {
+                const colors = { z: '#fff2ac', a: '#d1eaff', q: '#ffd1dc' };
+                if (colors[key] || key === 'd') {
+                    e.preventDefault(); saveToUndoStack();
+                    if (key === 'd') document.execCommand('foreColor', false, '#e74c3c');
+                    else document.execCommand('backColor', false, colors[key]);
+                    saveCurrentFolder(); saveToUndoStack();
+                }
+            }
+        });
+
+        let typingTimer;
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('editor-box') || e.target.id === 'topicInput') {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => { saveCurrentFolder(); saveToUndoStack(); }, 800);
+            }
+        });
+
+        // ===== GIST SYNC =====
+        const GIST_TOKEN_KEY = 'WritingLab_GistToken';
+        const GIST_ID_KEY = 'WritingLab_GistId';
+        const GIST_FILENAME = 'writinglab_data.json';
+
+        let gistToken = localStorage.getItem(GIST_TOKEN_KEY) || '';
+        let gistId = localStorage.getItem(GIST_ID_KEY) || '';
+        let syncTimer = null;
+        let isSyncing = false;
+
+        function setSyncStatus(state, label) {
+            const dot = document.getElementById('syncDot');
+            const lbl = document.getElementById('syncLabel');
+            dot.className = 'sync-dot ' + state;
+            lbl.textContent = label;
+        }
+        function openSyncModal() {
+            document.getElementById('modalToken').value = gistToken;
+            document.getElementById('modalGistId').value = gistId;
+            document.getElementById('syncModal').style.display = 'flex';
+        }
+        function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
+
+        async function saveSyncConfig() {
+            const token = document.getElementById('modalToken').value.trim();
+            const id = document.getElementById('modalGistId').value.trim();
+            if (!token) { alert('Vui lòng nhập GitHub Token!'); return; }
+            gistToken = token;
+            gistId = id;
+            localStorage.setItem(GIST_TOKEN_KEY, token);
+            setSyncStatus('syncing', 'Đang kết nối...');
+            closeSyncModal();
+            if (!gistId) {
+                await createGist();
+                await pushToGist();
+            } else {
+                localStorage.setItem(GIST_ID_KEY, gistId);
+                await loadFromGist();
+            }
+        }
+
+        async function createGist() {
+            try {
+                const res = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers: { 'Authorization': `token ${gistToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        description: 'WritingLab Data', public: false,
+                        files: { [GIST_FILENAME]: { content: JSON.stringify(folders) } }
+                    })
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                gistId = data.id;
+                localStorage.setItem(GIST_ID_KEY, gistId);
+                setSyncStatus('synced', 'Đã tạo Gist ✓');
+                setTimeout(() => alert(`✅ Gist mới đã được tạo!\n\nGist ID: ${gistId}\n\nHãy copy ID này để nhập vào thiết bị khác.`), 300);
+            } catch(e) {
+                setSyncStatus('error', 'Lỗi tạo Gist');
+                alert('❌ Không tạo được Gist. Kiểm tra lại token!');
+            }
+        }
+
+        async function pushToGist() {
+            if (!gistToken || !gistId || isSyncing) return;
+            isSyncing = true;
+            setSyncStatus('syncing', 'Đang lưu...');
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${gistToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(folders) } } })
+                });
+                if (!res.ok) throw new Error();
+                const now = new Date();
+                setSyncStatus('synced', `Synced ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
+            } catch(e) {
+                setSyncStatus('error', 'Sync thất bại');
+            } finally { isSyncing = false; }
+        }
+
+        async function loadFromGist() {
+            if (!gistToken || !gistId) return;
+            setSyncStatus('syncing', 'Đang tải...');
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `token ${gistToken}` }
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const file = data.files[GIST_FILENAME];
+                if (file && file.content) {
+                    const remote = JSON.parse(file.content);
+                    if (Array.isArray(remote)) {
+                        folders = remote;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(folders));
+                        updateDashboard();
+                        setSyncStatus('synced', 'Đã đồng bộ ✓');
+                    }
+                } else { setSyncStatus('synced', 'Gist trống'); }
+            } catch(e) { setSyncStatus('error', 'Lỗi tải dữ liệu'); }
+        }
+
+        function saveToLocal() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(folders));
+            if (gistToken && gistId) {
+                clearTimeout(syncTimer);
+                syncTimer = setTimeout(pushToGist, 2000);
+            }
+        }
+        function goHome() { saveCurrentFolder(); document.getElementById('dashboard').style.display = 'block'; document.getElementById('lab-interface').style.display = 'none'; updateDashboard(); undoStack = []; }
+        function toggleImportant(btn) { saveToUndoStack(); const block = btn.closest('.essay-block'); const isImp = block.classList.toggle('important'); btn.classList.toggle('active', isImp); btn.innerText = isImp ? '★' : '☆'; saveCurrentFolder(); saveToUndoStack(); }
+        function deleteFolder(e, id) { e.stopPropagation(); if(confirm('Delete?')) { folders = folders.filter(x => x.id !== id); saveToLocal(); updateDashboard(); } }
+        function updateFilterTypes() {
+            const part = document.getElementById('filterPart').value;
+            const typeFilter = document.getElementById('filterType');
+            typeFilter.innerHTML = '<option value="All">All Types</option>';
+            const allTypes = part === "All" ? [...subTypesMap["Task 1"], ...subTypesMap["Task 2"], ...subTypesMap["Other"]] : subTypesMap[part];
+            [...new Set(allTypes)].forEach(t => typeFilter.innerHTML += `<option value="${t}">${t}</option>`);
+        }
+        function updateSubTypes() {
+            const part = document.getElementById('folderPart').value;
+            const subSelect = document.getElementById('folderSubType');
+            subSelect.innerHTML = '';
+            subTypesMap[part].forEach(t => { subSelect.innerHTML += `<option value="${t}">${t}</option>`; });
+            saveCurrentFolder();
+        }
+        function createNewFolder() {
+            const now = new Date();
+            const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}`;
+            const id = 'w_' + Date.now();
+            folders.push({ id, topic: '', type: 'Task 1', subType: 'Line Graph', date: dateStr, question: '', img: '', essays: [{ i: '', e: '', d: dateStr, important: false }] });
+            saveToLocal(); openFolder(id);
+        }
+        function updateStreak() {
+            const today = new Date().toDateString();
+            if (streakData.lastDate !== today) {
+                streakData.current = (streakData.lastDate && (new Date().setHours(0,0,0,0) - new Date(streakData.lastDate).setHours(0,0,0,0) === 86400000)) ? streakData.current + 1 : 1;
+                streakData.lastDate = today; if (streakData.current > streakData.best) streakData.best = streakData.current;
+                localStorage.setItem(STREAK_KEY, JSON.stringify(streakData));
+            }
+        }
+        function addEssayBlock() {
+            saveToUndoStack();
+            const dateStr = `${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${String(new Date().getFullYear()).slice(-2)}`;
+            document.getElementById('essay-container').appendChild(renderEssayBlock({i:'', e:'', d: dateStr, important: false}));
+            saveCurrentFolder(); saveToUndoStack();
+        }
+        function moveBlock(btn, dir) {
+            saveToUndoStack(); const b = btn.closest('.essay-block');
+            if(dir===-1 && b.previousElementSibling) b.parentElement.insertBefore(b, b.previousElementSibling);
+            else if(dir===1 && b.nextElementSibling) b.parentElement.insertBefore(b.nextElementSibling, b);
+            saveCurrentFolder(); saveToUndoStack();
+        }
+        function handleImagePaste(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) { if (item.type.indexOf("image") !== -1) {
+                const reader = new FileReader();
+                reader.onload = (event) => { 
+                    saveToUndoStack(); 
+                    folders.find(x => x.id === currentId).img = event.target.result; 
+                    openFolder(currentId);
+                    saveCurrentFolder(); saveToUndoStack(); 
+                };
+                reader.readAsDataURL(item.getAsFile());
+            }}
+        }
+        function toggleHelp() { const p = document.getElementById('shortcuts'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
+
+        // Init sync on load
+        if (gistToken && gistId) { loadFromGist(); }
+        else if (gistToken && !gistId) { setSyncStatus('error', 'Chưa có Gist ID'); }
+        else { setSyncStatus('', 'Offline · Click để sync'); }
+        // ===== END SYNC =====
+
+        updateFilterTypes(); updateDashboard();
+    </script>
+</body>
+</html>
